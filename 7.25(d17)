@@ -1,0 +1,515 @@
+### DML 명령처리 - select, insert, update, delete 합치기
+
+* public class ConnectionHelper
+
+~~~java
+
+package dbConn.util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+
+/*DB연결 정보 반복적으로 코딩 해경
+	다른 클래스에서 아래 코드 구현을 하지 않도록 설계
+	Class.forName("oracle.jdbc.OracleDriver");
+	Connection conn = DriverManager.getConnection(url, uid, pwd);
+
+	이런식으로 사용
+	ConnectionHelper.getConnetion("mysql") or ("oracle")
+	dsn ==> data source name
+*/
+
+import java.sql.*;
+
+public class ConnectionHelper {  // 연결
+
+	public static Connection getConnection(String dsn) {
+		Connection conn = null;
+
+		try {
+			if( dsn.equals("mysql") ) {
+				Class.forName("com.mysql.jdbc.Driver");
+				conn = DriverManager.getConnection(
+								"jdbc:mysql://localhost:3306/sampleDB",
+								"kingsmile",
+								"mysql");
+
+			}else if( dsn.equals("oracle") ) {
+				Class.forName("oracle.jdbc.OracleDriver");
+				conn = DriverManager.getConnection(
+								"jdbc:oracle:thin:@127.0.0.1:1521:XE",
+								"ReasonI",
+								"oracle");
+			} // end if
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			return conn;
+		}
+	}
+
+	public static Connection getConnection(String dsn, String userid, String pwd) {
+		Connection conn = null;
+
+		try {
+			if( dsn.equals("mysql") ) {
+				Class.forName("com.mysql.jdbc.Driver");
+				conn = DriverManager.getConnection(
+								"jdbc:mysql://localhost:3306/sampleDB",
+								userid,
+								pwd);
+
+			}else if( dsn.equals("oracle") ) {
+				Class.forName("oracle.jdbc.OracleDriver");
+				conn = DriverManager.getConnection(
+								"jdbc:oracle:thin:@127.0.0.1:1521:XE",
+								userid,
+								pwd);
+			} // end if
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			return conn;
+		}
+	}
+}
+~~~
+
+* public class CloseHelper
+
+~~~java
+
+package dbConn.util;
+
+import java.sql.*;
+
+/*try{rs.close();}catch(SQLException e){
+e.printStackTrace();}try{stmt.close();}catch(SQLException e){
+e.printStackTrace();}try{conn.close();}catch(SQLException e){
+e.printStackTrace();}*/
+
+public class CloseHelper {
+
+	public static void close(Connection conn) {
+		if( conn != null ) {
+			try {
+				conn.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public static void close(Statement stmt) {
+		if( stmt != null ) {
+			try {
+				stmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public static void close(ResultSet rs) {
+		if( rs != null ) {
+			try {
+				rs.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public static void close(PreparedStatement pstmt) {
+		if( pstmt != null ) {
+			try {
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+}
+~~~
+
+
+* public class MainEntry
+
+```java
+
+package ex01.jdbc;
+
+import java.io.UnsupportedEncodingException;
+import java.sql.SQLException;
+import java.util.Scanner;
+
+public class MainEntry {
+	public static void main(String[] args) throws UnsupportedEncodingException, SQLException {
+		Scanner sc = new Scanner(System.in);
+		CRUDTest c = new CRUDTest();
+		c.connect();
+
+		while(true)
+		{
+			System.out.println("\n##### JDBC Query ###\n");
+			System.out.println("\t 1.전체 보기");
+			System.out.println("\t 2.레코드 삽입");
+			System.out.println("\t 3.레코드 수정");
+			System.out.println("\t 4.레코드 삭제");
+			System.out.println("\t 5.프로그램 종료");
+			System.out.println("\t[Select] -> ");
+
+			String ch = sc.nextLine();
+
+			switch (ch) {
+			case "1":
+			{
+				c.selectAll();
+				break;
+			}
+			case "2":
+			{
+				c.insert();
+				break;
+			}
+			case "3":
+			{
+				c.update();
+				break;
+			}
+			case "4":
+			{
+				c.delete();
+				break;
+			}
+			case "5" :
+//				c.close();
+				System.exit(0); //프로그램 강제 종료
+
+			}//end switch
+		} //end while
+
+	}
+}
+```
+
+
+* public class CRUDTest
+
+```java
+
+package ex01.jdbc;
+
+import java.io.UnsupportedEncodingException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Scanner;
+
+import dbConn.util.ConnectionHelper;
+//import dbConn.util.CloseHelper;
+
+//DML 명령처리 - select, insert, update, delete
+public class CRUDTest {
+
+	PreparedStatement pstmt = null;
+	ResultSet rs = null;
+	String sql = null;
+	public Connection conn = null;
+	static Scanner sc = new Scanner(System.in);
+
+	public void connect() {
+		conn = ConnectionHelper.getConnection("oracle");
+	}
+
+//	public void close() {
+//		CloseHelper cl = CloseHelper();
+//	}
+
+
+	//select all
+	public void selectAll() {
+		try {
+			sql = "select * from gift";
+			pstmt = conn.prepareStatement(sql);
+			rs = pstmt.executeQuery();
+
+			System.out.println("상품번호\t상품명\t최저가\t최고가");
+
+			while( rs.next() )
+			{
+				System.out.println(rs.getInt(1) + "\t" + rs.getString(2)
+				+ "\t" + rs.getInt(3) + "\t" + rs.getInt(4));
+			}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+	}
+
+	//insert
+	public void insert() throws SQLException, UnsupportedEncodingException {
+		System.out.println("gno = ");
+		int gno = sc.nextInt();
+		System.out.println("gname = ");
+		String gname = sc.next();
+		System.out.println("g_start = ");
+		int g_start = sc.nextInt();
+		System.out.println("g_end = ");
+		int g_end = sc.nextInt();
+
+		sql = "INSERT INTO GIFT VALUES(?, ?, ?, ?)";
+
+		pstmt = conn.prepareStatement(sql);
+		pstmt.setInt(1, gno);
+		//pstmt.setString(2, gname);
+		pstmt.setString(2, new String(gname.getBytes("UTF-8"), "UTF-8"));
+		//한글로 입력시 오류날 수 있기 때문에 UTF-8로 변환시켜줌
+		pstmt.setInt(3, g_start);
+		pstmt.setInt(4, g_end);
+
+		int resut = pstmt.executeUpdate();
+
+		System.out.println(resut + " 성공적으로 데이터가 추가되었습니다.");
+		selectAll();
+	}
+
+	//Update
+	public void update() throws SQLException {
+		System.out.println("몇번 수정?");
+		int num = new Scanner(System.in).nextInt();
+
+		System.out.println(num + "에 수정할 내용을 입력하세요 (상품번호 / 상품명 / 최저가 / 최고가)");
+
+		int gno = new Scanner(System.in).nextInt();
+		String gname = new Scanner(System.in).next();
+		int g_start = new Scanner(System.in).nextInt();
+		int g_end = new Scanner(System.in).nextInt();
+
+		sql = "update gift set gno = ?, gname = ?, g_start = ?, g_end  = ?  where gno = " + num;
+		pstmt = conn.prepareStatement(sql);
+
+		pstmt.setInt(1, gno);
+		pstmt.setString(2, gname);
+		pstmt.setInt(3, g_start);
+		pstmt.setInt(4, g_end);
+
+		pstmt.executeUpdate();
+
+		System.out.println(" 성공적으로 데이터가 수정되었습니다.");
+		selectAll();
+	}
+
+	//delete
+	public void delete () throws SQLException {
+		selectAll();
+		System.out.println("몇번 삭제?");
+		int num = new Scanner(System.in).nextInt();
+
+		sql = "delete gift where gno = " + num;
+		pstmt = conn.prepareStatement(sql);
+
+		pstmt.executeUpdate();
+
+		System.out.println(" 성공적으로 데이터가 삭제되었습니다.");
+		selectAll();
+	}
+}
+```
+
+--------------------
+#### dept2로 연습해보기
+
+* public class MainEntry
+
+~~~java
+
+package ex02.dept2;
+
+import java.sql.SQLException;
+import java.util.Scanner;
+
+public class MainEntry {
+	public static void main(String[] args) throws SQLException {
+
+		Scanner sc = new Scanner(System.in);
+		CRUD_dept c = new CRUD_dept();
+
+		c.connection();
+
+		while(true)
+		{
+			System.out.println("---------------------------------------");
+			System.out.println("1. 보기");
+			System.out.println("2. 레코드 삽입");
+			System.out.println("3. 레코드 수정");
+			System.out.println("4. 레코드 삭제");
+			System.out.println("5. 종료");
+
+			int choice = sc.nextInt();
+
+			switch (choice)
+			{
+			case 1 :
+			{
+				c.select();
+				break;
+			}
+			case 2 :
+			{
+				c.insert();
+				break;
+			}
+			case 3 :
+			{
+				c.update();
+				break;
+			}
+			case 4 :
+			{
+				c.delete();
+				break;
+			}
+			case 5 :
+			{
+				sc.close();
+				c.cclose();
+				System.out.println("시스템 종료");
+				System.exit(0);
+			}
+
+
+
+			}//switch 종료
+		}
+
+	}
+}
+~~~
+
+* public class CRUD_dept
+
+~~~java
+
+package ex02.dept2;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Scanner;
+
+import dbConn.util.ConnectionHelper;
+import dbConn.util.CloseHelper;
+
+public class CRUD_dept {
+
+	PreparedStatement pstmt = null;
+	ResultSet rs = null;
+	public Connection conn = null;
+
+
+
+	String sql = null;
+	Scanner scan = new Scanner(System.in);
+
+	//1. 드라이버로드 & 연결
+	public void connection()
+	{
+		conn = ConnectionHelper.getConnection("oracle");
+	}
+
+	public void cclose()
+	{
+		CloseHelper.close(conn);
+	}
+
+	// Select
+	public void select() throws SQLException
+	{
+
+		sql = "select * from dept2";
+		pstmt = conn.prepareStatement(sql);
+		rs = pstmt.executeQuery();
+
+		System.out.println("부서번호\t부서명\t부서뭐징\t부서위치");
+
+		while(rs.next())
+		{
+			System.out.println(rs.getString(1) + "\t" + rs.getString(2) + "\t"+ rs.getString(3) + "\t"+ rs.getString(4));
+		}
+
+	}
+
+	// Insert
+	public void insert() throws SQLException
+	{
+		System.out.println("부서번호 = ");
+		String dcode = scan.next();
+		System.out.println("부서명 = ");
+		String dname = scan.next();
+		System.out.println("부서뭐징 = ");
+		String pdept = scan.next();
+		System.out.println("부서위치 = ");
+		String area = scan.next();
+
+		sql = "INSERT INTO DEPT2 VALUES(?, ?, ?, ?)";
+		pstmt = conn.prepareStatement(sql);
+
+		pstmt.setString(1, dcode);
+		pstmt.setString(2, dname);
+		pstmt.setString(3, pdept);
+		pstmt.setString(4, area);
+
+		pstmt.executeUpdate();
+
+		select();
+	}
+
+	// Update
+	public void update() throws SQLException
+	{
+		System.out.println("몇번 업뎃?");
+		int num = scan.nextInt();
+
+		System.out.println("업뎃 내용 입력 : 부서번호 / 부서명 / 부서뭐징 / 부서위치");
+		System.out.println("부서번호 = ");
+		String dcode = scan.next();
+		System.out.println("부서명 = ");
+		String dname = scan.next();
+		System.out.println("부서뭐징 = ");
+		String pdept = scan.next();
+		System.out.println("부서위치 = ");
+		String area = scan.next();
+
+		sql = "update dept2 set dcode = ?, dname = ?, pdept = ?, area = ? where dcode = " + num;
+		pstmt = conn.prepareStatement(sql);
+
+		pstmt.setString(1, dcode);
+		pstmt.setString(2, dname);
+		pstmt.setString(3, pdept);
+		pstmt.setString(4, area);
+
+		pstmt.executeUpdate();
+
+		select();
+	}
+
+	// Delete
+	public void delete() throws SQLException
+	{
+		System.out.println("삭제할 번호");
+		int num = scan.nextInt();
+
+		sql = "delete dept2 where dcode = " + num;
+		pstmt = conn.prepareStatement(sql);
+
+		pstmt.executeUpdate();
+
+		select();
+	}
+}
+~~~
